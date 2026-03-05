@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c4d4c2c82c17dd499aa5fda981bd7af, type: 3}
+  m_Name: LootboxSettings
+  m_EditorClassIdentifier: Assembly-CSharp::Task3Lootbox.LootboxSettings
+  items:
+  - {fileID: 11400000, guid: 7aa73ee8076d96e4bb777422e4fac61e, type: 2}
+  - {fileID: 11400000, guid: 4adb1b8597f41044a967e954194b2b56, type: 2}
+  - {fileID: 11400000, guid: 2b6db2e6c9a73e842978129a54b3c2b8, type: 2}
+  - {fileID: 11400000, guid: 13d93905a7068ec4985011d7ea8230fa, type: 2}
+  - {fileID: 11400000, guid: acae7bef27934914a90a93ccb913319a, type: 2}
+  itemsToOpen: 1
+  raritySettings: {fileID: 11400000, guid: 1eacda67b0708b64eb9fb64f36d615c1, type: 2}
