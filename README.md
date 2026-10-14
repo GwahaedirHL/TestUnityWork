@@ -1,87 +1,62 @@
-# AxGridTools Test Task — Lootbox Mini Slot
+# Lootbox Mini Slot — AxGridTools test task
 
-Демонстрационное видео https://disk.yandex.ru/i/H6M8nCItFeX2LQ 
+A vertical "slot" lootbox opening built on **AxGridTools** (Model, Binds, FSM, Path).
 
-Тестовый проект на Unity с использованием **AxGridTools** (Model, Binds, FSM, Path) для реализации мини-слота (открытие лутбокса).
+▶ **Demo video:** https://disk.yandex.ru/i/H6M8nCItFeX2LQ
 
-## Задача
+## Task
 
-На экране отображается вертикальный “слот” из **3 видимых элементов** (в реализации используется пул из **5 элементов**, чтобы были скрытые сверху/снизу) и 2 кнопки: **Start** и **Stop**.
+- A vertical slot with 3 visible items and Start / Stop buttons
+- Endless downward scroll with acceleration on start
+- Stop becomes available only after 3 seconds
+- A smooth stop that lands the center item exactly in the middle
+- Logic driven by an FSM; buttons work through `UIButtonDataBind` and Model enable/disable flags
+- Visual assets and at least one Particle System
 
-Нужно:
-- реализовать бесконечный скролл картинок вниз по принципу слота
-- разгон при старте
-- возможность нажать Stop только через 3 секунды
-- “красивая” остановка так, чтобы **центральный элемент оказался ровно по центру**
-- управление логикой через **FSM**
-- работа кнопок через **UIButtonDataBind** и Model-флаги enable/disable
-- добавить визуальные ресурсы и хотя бы одну Particle System
-- проверить адаптацию UI под разные горизонтальные разрешения
+## Implementation
 
-## Что сделано
+### FSM
+| State | Behavior |
+|---|---|
+| `Idle` | Start enabled, Stop disabled |
+| `Spinning` | Spin starts; Stop unlocks after 3 seconds |
+| `Stopping` | Stop is requested; waits for the stop animation to finish |
+| `Finishing` | Plays particles for 3 seconds, then returns to `Idle` |
 
-### 1) FSM (AxGridTools)
-Логика вынесена в конечный автомат со следующими состояниями:
-- **Idle**: Start доступна, Stop заблокирована
-- **Spinning**: запускается вращение, Stop разблокируется через 3 секунды
-- **Stopping**: отправляется запрос на остановку и ожидание завершения анимации
-- **Finishing**: запуск частиц на 3 секунды, затем возврат в Idle
+Buttons send a single `OnBtn` signal; the FSM owns all transitions and visual events. See `States.cs`.
 
-FSM не раскрывает наружу детали переходов: кнопки отправляют сигнал, FSM управляет переходами и событиями визуальной части.
+### Buttons and Model
+The FSM toggles `BtnStartEnable` / `BtnStopEnable` in the Model, so a button is disabled whenever its action makes no sense. See `Constants.cs`, `States.cs`.
 
-См. `States.cs`.
+### Endless scroll and precise stop
+- A pool of 5 `LootboxItemView` (3 visible + hidden above and below) with wrap positioning: an item leaving the bottom moves to the top and gets a new icon.
+- On Stop, the picked item is assigned to the hidden top item *before* it enters the visible area.
+- The stop uses a brake zone with a slight overshoot, then snaps exactly to center.
 
-### 2) Сигналы и блокировка кнопок
-- FSM управляет флагами `BtnStartEnable` / `BtnStopEnable` в Model
-- Нажатие кнопок приходит в FSM через единый сигнал `OnBtn`
-- Кнопки должны быть отключены, если действие не имеет смысла (например Stop до разрешения)
+See `LootboxSpinView.cs`.
 
-См. `Constants.cs` и `States.cs`.
+### Weighted random by rarity
+The item is picked at spin start using its rarity weight. See `LootboxController.cs` (`Pick`), `LootboxSettings.cs`, `RaritySettings.cs`.
 
-### 3) Бесконечный скролл + корректная остановка в центр
-Визуальная часть слота реализована через пул `LootboxItemView` и “wrap” позиционирование:
-- элементы двигаются вниз
-- когда элемент уходит ниже нижней границы, он переносится наверх и получает новую иконку
-- при Stop в момент, когда “верхний невидимый” элемент переезжает вниз, ему подставляется **picked item** (это происходит до попадания в видимую область)
-- остановка выполняется с торможением (brake zone) + легкий overshoot, затем выполняется snap в точный центр
+`RaritySettings` (ScriptableObject) stores weight and color per rarity and builds lookup arrays in `OnEnable` / `OnValidate`:
+```csharp
+raritySettings.Color[rarity]
+raritySettings.Weight[rarity]
+```
+`LootboxSettings` assigns the rarity color and weight to every `ItemData`.
 
-См. `LootboxSpinView.cs`.
+### Visuals
+- `LootboxItemView` shows the icon on a background tinted with the rarity color.
+- Particles play at the end of a spin and are disabled after 3 seconds; the instance is created once and reused.
 
-### 4) Выбор предмета (Weighted Random)
-Предмет выбирается заранее, при старте спина, с учетом веса (rarity weight).
-Вес берется из настроек редкости.
+## Data
 
-См. `LootboxController.cs` (Pick), `LootboxSettings.cs`, `RaritySettings.cs`.
+- `ItemData` — ScriptableObject: id, icon, rarity
+- `RaritySettings` — ScriptableObject: weight and color per rarity
+- `LootboxSettings` — combines items with rarity data
 
-### 5) Редкость: вес и цвет (удобный доступ по enum)
-Настройки редкости вынесены в `RaritySettings`:
-- в инспекторе задаются `RarityWeight` (rarity, weight, color)
-- на OnEnable/OnValidate собираются быстрые lookup-массивы
-- доступ выглядит так:
-  - `raritySettings.Color[rarity]`
-  - `raritySettings.Weight[rarity]`
+## Running
 
-Далее при сборке данных (`BuildItems`) каждому `ItemData` назначаются `RarityColor` и `Weight`.
-
-См. `RaritySettings.cs`, `LootboxSettings.cs`, `ItemData.cs`.
-
-### 6) Визуал элемента
-`LootboxItemView` отображает:
-- sprite иконки
-- фон, окрашенный по цвету редкости
-
-См. `LootboxItemView.cs`.
-
-### 7) Particles (VFX)
-В конце спина FSM запускает частицы, затем выключает их через 3 секунды.
-Инстанс частиц кэшируется (создается один раз и переиспользуется).
-
-См. `LootboxController.cs`, состояние Finishing в `States.cs`.
-
-## Структура данных
-
-- `ItemData` — ScriptableObject предмета (id, icon, rarity)
-- `RaritySettings` — ScriptableObject таблицы редкости (weight + color)
-- `LootboxSettings` — сборщик финальных данных: назначает `Weight` и `RarityColor` каждому item
-
-См. `ItemData.cs`, `LootboxSettings.cs`, `RaritySettings.cs`. 
+- Unity **6000.3.8f1**
+- Open `Assets/TASK3/TASK3_Solution/Lootbox.unity` and press Play
+- `ExampleFSM` and `ExamplePath` are AxGridTools examples from the original task template
